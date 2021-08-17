@@ -14,7 +14,7 @@ from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
 
 #Brown-Corpus
-nltk.download('brown')                                   
+nltk.download()                                   
 from nltk.corpus import brown
 
 #Use universal tagset , currently not using
