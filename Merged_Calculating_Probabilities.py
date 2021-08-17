@@ -133,14 +133,96 @@ for sent in train_dataset:
       tags_of_tokens[word] = list_of_tags
 #Each word and its corresponding tags in the train dataset
         
-# for sent in test_dataset:
-#   for (word,tag) in sent:
-#     word=word.lower()
-#     try:
-#       if tag not in tags_of_tokens[word]:
-#         tags_of_tokens[word].append(tag)
-#     except:
-#       list_of_tags = []
-#       list_of_tags.append(tag)
-#       tags_of_tokens[word] = list_of_tags
+for sent in test_dataset:
+  for (word,tag) in sent:
+    word=word.lower()
+    try:
+      if tag not in tags_of_tokens[word]:
+        tags_of_tokens[word].append(tag)
+    except:
+      list_of_tags = []
+      list_of_tags.append(tag)
+      tags_of_tokens[word] = list_of_tags
 # #Each word and its corresponding tags in the test dataset
+
+#Seperating the test data into test words and test tags
+test_words=[]
+test_tags=[]
+for sent in test_dataset:
+  temp_word=[]
+  temp_tag=[]
+  for (word,tag) in sent:
+    temp_word.append(word.lower())
+    temp_tag.append(tag)
+  test_words.append(temp_word)
+  test_tags.append(temp_tag)
+
+#Viterbi Algorithm Implementation
+predicted_tags = []                #Final list for prediction
+for i in range(len(test_words)):   # for each tokenized sentence in the test data (test_words is a list of lists)
+  sent = test_words[i]
+  #storing_values is a dictionary which stores the required values
+  #ex: storing_values = {step_no.:{state1:[previous_best_state,value_of_the_state]}}                
+  storing_values = {}              
+  for q in range(len(sent)):
+    step = sent[q]
+    #for the starting word of the sentence
+    if q == 1:                
+      storing_values[q] = {}
+      tags = tags_of_tokens[step]
+      for t in tags:
+        #this is applied since we do not know whether the word in the test data is present in train data or not
+        try:
+          storing_values[q][t] = ['^^',bigram_tag_prob['^^'][t]*train_emission_prob[t][step]]
+        #if word is not present in the train data but present in test data we assign a very low probability of 0.0001
+        except:
+          storing_values[q][t] = ['^^',0.0001]
+    
+    #if the word is not at the start of the sentence
+    if q>1:
+      storing_values[q] = {}
+      previous_states = list(storing_values[q-1].keys())   # loading the previous states
+      current_states  = tags_of_tokens[step]               # loading the current states
+      #calculation of the best previous state for each current state and then storing
+      #it in storing_values
+      for t in current_states:                             
+        temp = []
+        for pt in previous_states:                         
+          try:
+            temp.append(storing_values[q-1][pt][1]*bigram_tag_prob[pt][t]*train_emission_prob[t][step])
+          except:
+            temp.append(storing_values[q-1][pt][1]*0.0001)
+        max_temp_index = temp.index(max(temp))
+        best_pt = previous_states[max_temp_index]
+        storing_values[q][t]=[best_pt,max(temp)]
+
+  #Backtracing to extract the best possible tags for the sentence
+  pred_tags = []
+  total_steps_num = storing_values.keys()
+  last_step_num = max(total_steps_num)
+  for bs in range(len(total_steps_num)):
+    step_num = last_step_num - bs
+    if step_num == last_step_num:
+      pred_tags.append('$$')
+      pred_tags.append(storing_values[step_num]['$$'][0])
+    if step_num<last_step_num and step_num>0:
+      pred_tags.append(storing_values[step_num][pred_tags[len(pred_tags)-1]][0])
+  predicted_tags.append(list(reversed(pred_tags)))
+
+
+
+
+#Calculating the accuracy based on tagging each word in the test data.
+right = 0 
+wrong = 0
+for i in range(len(test_tags)):
+  gt = test_tags[i]
+  pred = predicted_tags[i]
+  for h in range(len(gt)):
+    if gt[h] == pred[h]:
+      right = right+1
+    else:
+      wrong = wrong +1 
+
+print('Accuracy on the test data is: ',right/(right+wrong))
+print('Loss on the test data is: ',wrong/(right+wrong))
