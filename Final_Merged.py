@@ -14,11 +14,12 @@ from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
 
 #Brown-Corpus
-nltk.download()                                   
+
+nltk.download('all')                                   
 from nltk.corpus import brown
 
 #Use universal tagset , currently not using
-sentence_tag = brown.tagged_sents(tagset="universal")
+sentence_tag = nltk.corpus.brown.tagged_sents(tagset="universal")
 modified_sentence_tag=[]
 for sent in sentence_tag:
 
