@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[13]:
+# In[70]:
 
 
 import numpy as np
+import pandas as pd
 import itertools
 import matplotlib
 import nltk
@@ -14,12 +15,11 @@ from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
 
 #Brown-Corpus
-
-nltk.download('all')                                   
+nltk.download('brown')                                   
 from nltk.corpus import brown
 
 #Use universal tagset , currently not using
-sentence_tag = nltk.corpus.brown.tagged_sents(tagset="universal")
+sentence_tag = brown.tagged_sents(tagset="universal")
 modified_sentence_tag=[]
 for sent in sentence_tag:
 
@@ -238,15 +238,25 @@ for li in predicted_tags:
     for tag in li:
         tag_seq_pred.append(tag)
         
-for i in range(len(tag_seq_act)):
-    if tag_seq_act[i]=='$$':
-        tag_seq_act[i]='END'
+#Removing $$ and END from the Model Evaluation
+for item in tag_seq_act:
+    if item=='$$':
+        tag_seq_act.remove(item)
+        
+for item in tag_seq_pred:
+    if item=='$$':
+        tag_seq_pred.remove(item)
 
-for i in range(len(tag_seq_pred)):
-    if tag_seq_pred[i]=='$$':
-        tag_seq_pred[i]='END'
+for item in tag_seq_act:
+    if item=='^^':
+        tag_seq_act.remove(item)
         
+for item in tag_seq_pred:
+    if item=='^^':
+        tag_seq_pred.remove(item)
+
         
+#Evaluating the Model
 for tag in tag_seq_act:
     uniq_tag.add(tag)
 
@@ -269,12 +279,16 @@ for i in range(len(tag_seq_act)):
 precision=matched_tags/len(tag_seq_act)
 recall=matched_tags/len(tag_seq_pred)
 F1_score=(2*precision*recall)/(precision+recall)
+F_point_5=(1.25*precision*recall)/((0.25*precision)+recall)
+F2_score=(5*precision*recall)/((4*precision)+recall)
 conf_matrix=confusion_matrix(tag_seq_act,tag_seq_pred)
 # return [precision, recall, F1_score, conf_matrix, uniq_tag]
 
 print("Precision:",precision*100)
 print("Recall:",recall*100)
 print("F1 Score:",F1_score)
+print("F0.5 Score:",F_point_5)
+print("F2 Score:",F2_score)
 
 def create_conf_matrix(conf, labels):
     font = {'family' : 'DejaVu Sans',
@@ -295,5 +309,109 @@ def create_conf_matrix(conf, labels):
     ax.yaxis.label.set_size(30)
     ax.title.set_size(30)
 
+def per_POS_evaluation(conf_matrix,uniq_tag):
+    li=[]
+    for i in range(len(conf_matrix)):
+        rt,ct=0,0
+        for j in range(len(conf_matrix)):
+            rt+=conf_matrix[i][j]
+            ct+=conf_matrix[j][i]
+        A=conf_matrix[i][i]
+        prec=A/ct
+        rec=A/rt
+        F1=(2*prec*rec)/(prec+rec)
+        li.append([prec,rec,F1])
+    di={}
+    i=0
+    for l in li:
+        di[uniq_tag[i]]=l
+        i+=1
+    table=pd.DataFrame.from_dict(di, orient='index')
+    table.columns=['Precision', 'Recall', 'F1_Score']
+    display(table)
+    
+
 create_conf_matrix(conf_matrix, uniq_tag)
+
+per_POS_evaluation(conf_matrix, uniq_tag)
+
+
+# In[69]:
+
+
+display(table)
+
+
+# In[50]:
+
+
+import pandas as pd
+
+li=[]
+for i in range(len(conf_matrix)):
+    rt,ct=0,0
+    for j in range(len(conf_matrix)):
+        rt+=conf_matrix[i][j]
+        ct+=conf_matrix[j][i]
+    A=conf_matrix[i][i]
+    prec=A/ct
+    rec=A/rt
+    F1=(2*prec*rec)/(prec+rec)
+    li.append([prec,rec,F1])
+
+di={}
+i=0
+for l in li:
+    di[uniq_tag[i]]=l
+    i+=1
+    
+table2=pd.DataFrame.from_dict(di, orient='index')
+table2.columns=['Precision', 'Recall', 'F1_Score']
+
+
+# In[51]:
+
+
+table2
+
+
+# In[53]:
+
+
+tag_seq_act.remove('END')
+
+
+# In[54]:
+
+
+for i in range(len(tag_set_act))
+
+
+# In[57]:
+
+
+for i in range(len(tag_seq_act)):
+    if tag_seq_act[i]=='END':
+        tag_seq_act.remove('END')
+
+
+# In[59]:
+
+
+c=0
+for i in range(len(tag_seq_act)):
+    if tag_seq_act[i]=='END':
+        c+=1
+
+
+# In[60]:
+
+
+c
+
+
+# In[ ]:
+
+
+
 
