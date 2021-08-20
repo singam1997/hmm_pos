@@ -8,7 +8,6 @@ Original file is located at
 
 #TODO
 1) Make Code Readable with comments
-2) Calculating accuracies for POS
 
 Importing necessary libraries
 """
@@ -22,6 +21,7 @@ import math
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
 import statistics
+import pandas as pd
 
 #Brown-Corpus
 nltk.download('all')                                   
@@ -71,11 +71,37 @@ test_sentences[3]=sentences_set4
 train_sentences[4]=sentences_set1+sentences_set2+sentences_set3+sentences_set4
 test_sentences[4]=sentences_set5
 
+"""The following function generates POS tag estimations"""
+
+def per_POS_evaluation(conf_matrix,uniq_tag):
+    li=[]
+    for i in range(len(conf_matrix)):
+        rt,ct=0,0
+        for j in range(len(conf_matrix)):
+            rt+=conf_matrix[i][j]
+            ct+=conf_matrix[j][i]
+        A=conf_matrix[i][i]
+        prec=A/ct
+        rec=A/rt
+        F1=(2*prec*rec)/(prec+rec)
+        li.append([prec,rec,F1])
+    di={}
+    i=0
+    for l in li:
+        di[uniq_tag[i]]=l
+        i+=1
+    table=pd.DataFrame.from_dict(di, orient='index')
+    table.columns=['Precision', 'Recall', 'F1_Score']
+    return table
+
 """Loop around all the 5 sets"""
 
 precision_sets=[0]*5
 recall_sets=[0]*5
 F1_score_sets=[0]*5
+F05_score_sets=[0]*5
+F2_score_sets=[0]*5
+pos_estimation_sets=[pd.DataFrame]*5
 for setno in range(5):
   #For now only one set(set5) out of all sets is used, later on after the parts are merged we need to calculate probabilities, use viterbi and analyze on other sets as well
   train_dataset = train_sentences[setno]
@@ -277,21 +303,14 @@ for setno in range(5):
   uniq_tag_dict={}
   for li in test_tags:
       for tag in li:
-          tag_seq_act.append(tag)
+          if(tag!="^^" and tag!="$$"):
+            tag_seq_act.append(tag)
 
   for li in predicted_tags:
       for tag in li:
-          tag_seq_pred.append(tag)
-          
-  for i in range(len(tag_seq_act)):
-      if tag_seq_act[i]=='$$':
-          tag_seq_act[i]='END'
-
-  for i in range(len(tag_seq_pred)):
-      if tag_seq_pred[i]=='$$':
-          tag_seq_pred[i]='END'
-          
-          
+          if(tag!="^^" and tag!="$$"):
+            tag_seq_pred.append(tag)
+      
   for tag in tag_seq_act:
       uniq_tag.add(tag)
 
@@ -302,7 +321,7 @@ for setno in range(5):
               
   for i,tag in enumerate(tag_seq_act):
       tag_seq_act[i]=uniq_tag_dict[tag]
-          
+
   for i,tag in enumerate(tag_seq_pred):
       tag_seq_pred[i]=uniq_tag_dict[tag]
 
@@ -310,27 +329,37 @@ for setno in range(5):
   matched_tags=0
   for i in range(len(tag_seq_act)):
       if tag_seq_act[i]==tag_seq_pred[i]:
-        if tag_seq_act[i]!='^^' or tag_seq_act[i]!='END':
-          matched_tags+=1
-  precision=matched_tags/(len(tag_seq_act)-2)
-  recall=matched_tags/(len(tag_seq_pred)-2)
+        matched_tags+=1
+  precision=matched_tags/(len(tag_seq_act))
+  recall=matched_tags/(len(tag_seq_pred))
   F1_score=(2*precision*recall)/(precision+recall)
+  F05_score=(1.25*precision*recall)/(0.25*precision+recall)
+  F2_score=(5*precision*recall)/(4*precision+recall)
   conf_matrix=confusion_matrix(tag_seq_act,tag_seq_pred)
+  pos_estimation=per_POS_evaluation(conf_matrix, uniq_tag)
 
   precision_sets[setno]=precision
   recall_sets[setno]=recall
   F1_score_sets[setno]=F1_score
+  F05_score_sets[setno]=F05_score
+  F2_score_sets[setno]=F2_score
+  pos_estimation_sets[setno]=pos_estimation
 
-  print("\n===================\nSET ",setno+1," ESTIMATIONS\n===================")
-  print("Precision: ",precision)
-  print("Recall :",recall)
-  print("F1 Score :",F1_score)
+  # print("\n===================\nSET ",setno+1," ESTIMATIONS\n===================")
+  # print("Precision: ",precision)
+  # print("Recall :",recall)
+  # print("F1 Score :",F1_score)
+  # print("F0.5 Score :",F05_score)
+  # print("F2 Score :",F2_score)
+  # display(pos_estimation)
 
 print("===================\nOVERALL ESTIMATIONS\n===================")
-
-print("Overall Precision:", statistics.mean(precision_sets),"±",statistics.stdev(precision_sets)/math.sqrt(setno+1))
-print("Overall Recall:" ,statistics.mean(recall_sets),"±",statistics.stdev(recall_sets)/math.sqrt(setno+1))
-print("Overall F1 Score:", statistics.mean(F1_score_sets),"±",statistics.stdev(F1_score_sets)/math.sqrt(setno+1))
+print("Overall Precision:", "{:.6f}".format(statistics.mean(precision_sets)),"±","{:.6f}".format(statistics.stdev(precision_sets)/math.sqrt(setno+1)))
+print("Overall Recall:" ,"{:.6f}".format(statistics.mean(recall_sets)),"±","{:.6f}".format(statistics.stdev(recall_sets)/math.sqrt(setno+1)))
+print("Overall F1 Score:", "{:.6f}".format(statistics.mean(F1_score_sets)),"±","{:.6f}".format(statistics.stdev(F1_score_sets)/math.sqrt(setno+1)))
+print("Overall F0.5 Score:", "{:.6f}".format(statistics.mean(F1_score_sets)),"±","{:.6f}".format(statistics.stdev(F1_score_sets)/math.sqrt(setno+1)))
+print("Overall F2 Score:", "{:.6f}".format(statistics.mean(F1_score_sets)),"±","{:.6f}".format(statistics.stdev(F1_score_sets)/math.sqrt(setno+1)))
+print("\n===============\nPOS ESTIMATIONS\n===============\n",(pos_estimation_sets[0]+pos_estimation_sets[1]+pos_estimation_sets[2]+pos_estimation_sets[3]+pos_estimation_sets[4])/5)
 
 def create_conf_matrix(conf, labels):
     font = {'family' : 'DejaVu Sans',
@@ -350,5 +379,5 @@ def create_conf_matrix(conf, labels):
     ax.xaxis.label.set_size(30)
     ax.yaxis.label.set_size(30)
     ax.title.set_size(30)
-print("Following is the confusion matrix of set ",setno+1," of cross validation.")
+print("Following is the confusion matrix of set ",setno+1)
 create_conf_matrix(conf_matrix, uniq_tag)
