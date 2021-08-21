@@ -8,9 +8,9 @@ Original file is located at
 
 #TODO
 1) Make Code Readable with comments
-
-Importing necessary libraries
 """
+
+# Importing necessary libraries
 
 import numpy as np
 import itertools
@@ -23,19 +23,71 @@ import matplotlib.pyplot as plt
 import statistics
 import pandas as pd
 
-#Brown-Corpus
-nltk.download('all')                                   
+# display_conf_matrix() takes the confusion matrix and produces a visual of it
+def display_conf_matrix(conf, labels):
+    font = {'family' : 'DejaVu Sans',
+    'weight' : 'bold',
+    'size'   : 22}
+    plt.rc('font', **font)
+    cm_obj=ConfusionMatrixDisplay(conf, display_labels=labels)
+    fig, ax = plt.subplots(figsize=(30,30))
+    ax.set_xticklabels(labels,fontsize=20)
+    ax.set_yticklabels(labels,fontsize=20)
+    cm_obj.plot(ax=ax,values_format='')
+    cm_obj.ax_.set(
+            title="Confusion Matrix",
+            xlabel="Predicted",
+            ylabel="Actual"
+    )
+    ax.xaxis.label.set_size(30)
+    ax.yaxis.label.set_size(30)
+    ax.title.set_size(30)
+
+
+# per_POS_evaluation() calculates the per POS performance
+# For each pair for tags(one from row and other column) in confusion matrix
+# calculate the precision, recall and F1 Score
+# All these scores are stored in a dataframe and the dataframe is returned
+def per_POS_evaluation(conf_matrix,uniq_tag):
+    li=[]
+    for i in range(len(conf_matrix)):
+        rt,ct=0,0
+        for j in range(len(conf_matrix)):
+            rt+=conf_matrix[i][j]
+            ct+=conf_matrix[j][i]
+        A=conf_matrix[i][i]
+        prec=A/ct
+        rec=A/rt
+        F1=(2*prec*rec)/(prec+rec)
+        li.append([prec,rec,F1])
+    di={}
+    i=0
+    for l in li:
+        di[uniq_tag[i]]=l
+        i+=1
+    table=pd.DataFrame.from_dict(di, orient='index')
+    table.columns=['Precision', 'Recall', 'F1_Score']
+    return table
+
+#Getting the brown corpus
+nltk.download('all')                                  
 from nltk.corpus import brown
 
-#Using universal tagset
+# Sentences fetched with its word tagged with universal tagset and sentences are
+# prefixed and suffixed by delimiters. If originally sentence contains a 
+# delimiter then set it as ('<DEL>','X')
 sentence_tag = nltk.corpus.brown.tagged_sents(tagset="universal")
 modified_sentence_tag=[]
 for sent in sentence_tag:
+  for word,tag in sent:
+    if word=='^^' or word=='$$':
+      word='<DEL>'
+      tag='X'
   sent.insert(0,('^^','^^'))         # Sentence starts with '^^'
   sent.append(('$$','$$'))           # Sentence ends with '$$'
   modified_sentence_tag.append(sent)
 
-#Shuffle the whole corpus
+#Shuffle the whole corpus uniformly
 random.shuffle(modified_sentence_tag)
 
 #Divide corpus into 5 equal parts
@@ -44,8 +96,6 @@ sentences_set2=modified_sentence_tag[math.floor(len(modified_sentence_tag)*1/5):
 sentences_set3=modified_sentence_tag[math.floor(len(modified_sentence_tag)*2/5):math.floor(len(modified_sentence_tag)*3/5)]
 sentences_set4=modified_sentence_tag[math.floor(len(modified_sentence_tag)*3/5):math.floor(len(modified_sentence_tag)*4/5)]
 sentences_set5=modified_sentence_tag[math.floor(len(modified_sentence_tag)*4/5):]
-
-
 
 train_sentences=[[],[],[],[],[]]
 test_sentences=[[],[],[],[],[]]
@@ -71,31 +121,6 @@ test_sentences[3]=sentences_set4
 train_sentences[4]=sentences_set1+sentences_set2+sentences_set3+sentences_set4
 test_sentences[4]=sentences_set5
 
-"""The following function generates POS tag estimations"""
-
-def per_POS_evaluation(conf_matrix,uniq_tag):
-    li=[]
-    for i in range(len(conf_matrix)):
-        rt,ct=0,0
-        for j in range(len(conf_matrix)):
-            rt+=conf_matrix[i][j]
-            ct+=conf_matrix[j][i]
-        A=conf_matrix[i][i]
-        prec=A/ct
-        rec=A/rt
-        F1=(2*prec*rec)/(prec+rec)
-        li.append([prec,rec,F1])
-    di={}
-    i=0
-    for l in li:
-        di[uniq_tag[i]]=l
-        i+=1
-    table=pd.DataFrame.from_dict(di, orient='index')
-    table.columns=['Precision', 'Recall', 'F1_Score']
-    return table
-
-"""Loop around all the 5 sets"""
-
 precision_sets=[0]*5
 recall_sets=[0]*5
 F1_score_sets=[0]*5
@@ -103,12 +128,14 @@ F05_score_sets=[0]*5
 F2_score_sets=[0]*5
 pos_estimation_sets=[pd.DataFrame]*5
 for setno in range(5):
-  #For now only one set(set5) out of all sets is used, later on after the parts are merged we need to calculate probabilities, use viterbi and analyze on other sets as well
+  # For each set calculate the transmission and emission probabilities on training set
+  # And perform viterbi on test set. Later find per POS and overall estimation
   train_dataset = train_sentences[setno]
   test_dataset = test_sentences[setno]
 
-  #Creation of a dictionary whose keys are tags and values contain words which have correspoding tag in the taining dataset
-  #example:- 'TAG':{word1: count(word1,'TAG')} count(word1,'TAG') means how many times the word is tagged as 'TAG'
+  ## EMISSION PROBABILITY TABLE
+  # Creation of a dictionary whose keys are tags and values contain words which have corresponding tag in the taining dataset
+  # example:- 'TAG':{word1: count(word1,'TAG')} count(word1,'TAG') means how many times the word is tagged as 'TAG'
   train_word_tag = {}
   for sent in train_dataset:
     for (word,tag) in sent:
@@ -131,30 +158,7 @@ for setno in range(5):
   #Emission probability is #times a word occured as 'TAG' / total number of 'TAG' words
   #example: number of times 'Sandeep' occured as Noun / total number of nouns
 
-  #Estimating the bigrams of tags to be used for calculation of transition probability 
-  #Bigram Assumption is made, the current tag depends only on the previous tag
-  bigram_tag_data = {}
-  for sent in train_dataset:
-    bi=list(nltk.bigrams(sent))
-    for b1,b2 in bi:
-      try:
-        try:
-          bigram_tag_data[b1[1]][b2[1]]+=1
-        except:
-          bigram_tag_data[b1[1]][b2[1]]=1
-      except:
-        bigram_tag_data[b1[1]]={b2[1]:1}
-
-  #Calculation of emission probabilities using train_word_tag
-  train_emission_prob={}
-  for key in train_word_tag.keys():
-    train_emission_prob[key]={}
-    count = sum(train_word_tag[key].values())                           # count is total number of words tagged as a 'TAG'
-    for key2 in train_word_tag[key].keys():
-      train_emission_prob[key][key2]=train_word_tag[key][key2]/count    
-  #Emission probability is #times a word occured as 'TAG' / total number of 'TAG' words
-  #example: number of times 'Sandeep' occured as Noun / total number of nouns
-
+  ## TRANSITION PROBABILITY TABLE
   #Estimating the bigrams of tags to be used for calculation of transition probability 
   #Bigram Assumption is made, the current tag depends only on the previous tag
   bigram_tag_data = {}
@@ -185,10 +189,7 @@ for setno in range(5):
   #Tranmission probability is #times a TAG2 is preceded by TAG1 / total number of times TAG1 exists in dataset
   #example: number of times a noun occured before adjective / total number of times a noun occurred
 
-  #Calculation the possible tags for each word in the entire daatset
-  #Note: Here we have used the whole data(Train dataset + Test dataset)
-  #Reason: Words present in Test data is not subset pf Train data.
-  #The above thing can be neglected if not necessay, but it improves our accuracy of the model 
+  #Calculation the possible tags for each word in the train dataset
   tags_of_tokens = {}
   count=0
   for sent in train_dataset:
@@ -203,39 +204,18 @@ for setno in range(5):
         tags_of_tokens[word] = list_of_tags
   #Each word and its corresponding tags in the train dataset
 
-
-
-  # #Commenting Code  
-  test_tags_of_tokens={}   
-  for sent in test_dataset:
-    for (word,tag) in sent:
-      word=word.lower()
-      try:
-        if tag not in tags_of_tokens[word]:
-          test_tags_of_tokens[word].append(tag)
-      except:
-        list_of_tags = []
-        list_of_tags.append(tag)
-        test_tags_of_tokens[word] = list_of_tags
-  # #Each word and its corresponding tags in the test dataset
-
-  # tags for the unseen words in Viterbi
-  tags_of_unseen_tokens=list(train_word_tag.keys())
-  tags_of_unseen_tokens.remove('^^')
-  tags_of_unseen_tokens.remove('$$')
-  tags_of_unseen_tokens.remove('.')
-
-  #Seperating the test data into test words and test tags
+  # Getting words and their corresponding tags from the test set
+  # Seperating the test data into test words and test tags
   test_words=[]
   test_tags=[]
   for sent in test_dataset:
     temp_word=[]
     temp_tag=[]
     for (word,tag) in sent:
-      temp_word.append(word.lower())
-      temp_tag.append(tag)
-    test_words.append(temp_word)
-    test_tags.append(temp_tag)
+      temp_word.append(word.lower()) # words of a sentence in test dataset
+      temp_tag.append(tag) # tags of a sentence in test dataset
+    test_words.append(temp_word) # list with words of a sentence(tokenized sentence) appended to a list of list
+    test_tags.append(temp_tag) # list with tags of a sentence(tokenized sentence) appended to a list of list
 
   #Viterbi Algorithm Implementation
   predicted_tags = []                #Final list for prediction
@@ -359,25 +339,9 @@ print("Overall Recall:" ,"{:.6f}".format(statistics.mean(recall_sets)),"±","{:.
 print("Overall F1 Score:", "{:.6f}".format(statistics.mean(F1_score_sets)),"±","{:.6f}".format(statistics.stdev(F1_score_sets)/math.sqrt(setno+1)))
 print("Overall F0.5 Score:", "{:.6f}".format(statistics.mean(F1_score_sets)),"±","{:.6f}".format(statistics.stdev(F1_score_sets)/math.sqrt(setno+1)))
 print("Overall F2 Score:", "{:.6f}".format(statistics.mean(F1_score_sets)),"±","{:.6f}".format(statistics.stdev(F1_score_sets)/math.sqrt(setno+1)))
-print("\n===============\nPOS ESTIMATIONS\n===============\n",(pos_estimation_sets[0]+pos_estimation_sets[1]+pos_estimation_sets[2]+pos_estimation_sets[3]+pos_estimation_sets[4])/5)
+mean_POS_est=(pos_estimation_sets[0]+pos_estimation_sets[1]+pos_estimation_sets[2]+pos_estimation_sets[3]+pos_estimation_sets[4])/5
+se_POS_est=np.sqrt((pos_estimation_sets[0]-mean_POS_est)**2+(pos_estimation_sets[1]-mean_POS_est)**2+(pos_estimation_sets[2]-mean_POS_est)**2+(pos_estimation_sets[3]-mean_POS_est)**2+(pos_estimation_sets[4]-mean_POS_est)**2)/5
+print("\n===============\nPOS ESTIMATIONS\n===============\n++++\nMEAN\n++++\n",mean_POS_est,"\n++++++++++++++\nSTANDARD ERROR\n++++++++++++++\n",se_POS_est)
 
-def create_conf_matrix(conf, labels):
-    font = {'family' : 'DejaVu Sans',
-    'weight' : 'bold',
-    'size'   : 22}
-    plt.rc('font', **font)
-    cm_obj=ConfusionMatrixDisplay(conf, display_labels=labels)
-    fig, ax = plt.subplots(figsize=(30,30))
-    ax.set_xticklabels(labels,fontsize=20)
-    ax.set_yticklabels(labels,fontsize=20)
-    cm_obj.plot(ax=ax)
-    cm_obj.ax_.set(
-            title="Confusion Matrix",
-            xlabel="Predicted",
-            ylabel="Actual"
-    )
-    ax.xaxis.label.set_size(30)
-    ax.yaxis.label.set_size(30)
-    ax.title.set_size(30)
 print("Following is the confusion matrix of set ",setno+1)
-create_conf_matrix(conf_matrix, uniq_tag)
+display_conf_matrix(conf_matrix, uniq_tag)
