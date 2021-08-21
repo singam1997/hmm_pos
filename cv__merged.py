@@ -63,7 +63,7 @@ def per_POS_evaluation(conf_matrix,uniq_tag):
     table.columns=['Precision', 'Recall', 'F1_Score']
     return table
 
-#Getting the brown corpus
+# Getting the brown corpus
 nltk.download('all')                                  
 from nltk.corpus import brown
 
@@ -81,10 +81,10 @@ for sent in sentence_tag:
   sent.append(('$$','$$'))           # Sentence ends with '$$'
   modified_sentence_tag.append(sent)
 
-#Shuffle the whole corpus uniformly
+# Shuffle the whole corpus uniformly
 random.shuffle(modified_sentence_tag)
 
-#Divide corpus into 5 equal parts
+# Divide corpus into 5 equal parts
 sentences_set1=modified_sentence_tag[:math.floor(len(modified_sentence_tag)*1/5)]
 sentences_set2=modified_sentence_tag[math.floor(len(modified_sentence_tag)*1/5):math.floor(len(modified_sentence_tag)*2/5)]
 sentences_set3=modified_sentence_tag[math.floor(len(modified_sentence_tag)*2/5):math.floor(len(modified_sentence_tag)*3/5)]
@@ -94,7 +94,7 @@ sentences_set5=modified_sentence_tag[math.floor(len(modified_sentence_tag)*4/5):
 train_sentences=[[],[],[],[],[]]
 test_sentences=[[],[],[],[],[]]
 
-#For 5 Fold Cross Validation Train and test set
+# For 5 Fold Cross Validation Train and test set
 # Set1 as test set
 train_sentences[0]=sentences_set2+sentences_set3+sentences_set4+sentences_set5
 test_sentences[0]=sentences_set1
@@ -250,7 +250,7 @@ for setno in range(5):
           temp = []
           for pt in previous_states:                         
             try:
-              temp.append(storing_values[q-1][pt][1]*bigram_tag_prob[pt][t]*train_emission_prob[t][step])
+              temp.append(storing_values[q-1][pt][1]*bigram_tag_prob[pt][t]*train_emission_prob[t][step]) # If seen word
             except:
               temp.append(storing_values[q-1][pt][1]*0.0001)
           max_temp_index = temp.index(max(temp))
@@ -304,8 +304,8 @@ for setno in range(5):
   for i in range(len(tag_seq_act)):
       if tag_seq_act[i]==tag_seq_pred[i]:
         matched_tags+=1
-  precision=matched_tags/(len(tag_seq_act))
-  recall=matched_tags/(len(tag_seq_pred))
+  precision=matched_tags/(len(tag_seq_pred))
+  recall=matched_tags/(len(tag_seq_act))
   F1_score=(2*precision*recall)/(precision+recall)
   F05_score=(1.25*precision*recall)/(0.25*precision+recall)
   F2_score=(5*precision*recall)/(4*precision+recall)
@@ -318,7 +318,6 @@ for setno in range(5):
   F05_score_sets[setno]=F05_score
   F2_score_sets[setno]=F2_score
   pos_estimation_sets[setno]=pos_estimation
-
   # print("\n===================\nSET ",setno+1," ESTIMATIONS\n===================")
   # print("Precision: ",precision)
   # print("Recall :",recall)
