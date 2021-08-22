@@ -25,4 +25,12 @@
 	`cd HMM`
 2) Run the file *hmm_viterbi.py* using command prompt as follows:  
 `python hmm_viterbi.py`
-3) The Estimations will be shown within the command prompt itself and Confusion Matrix is shown in in a new window
+3) The Estimations will be shown within the command prompt itself and Confusion Matrix is shown in in a new window  
+
+## References
+
+1) *Getting words from Brown Corpus in NLTK and fetching bigrams*:**Categorizing and Tagging Words by NLTK** https://www.nltk.org/book/ch05.html  
+2) *Pandas Dataframe used for storing per POS estimations*: **Pandas Dataframe by Pandas** https://pandas.pydata.org/pandas-docs/version/0.23.3/generated/pandas.DataFrame.html  
+3) *Shuffling the corpus using random()*: **random.shffle by Python** https://docs.python.org/3/library/random.html#random.shuffle  
+4) *Nested Dictionaries in python*: **Python Nested Dictionary by programiz** https://www.programiz.com/python-programming/nested-dictionary  
+5) *Calculating estimations on k-fold cross validation:* **Black Box Machine Learning by Bloomberg ML EDU**  https://youtu.be/MsD28INtSv8?t=3139
