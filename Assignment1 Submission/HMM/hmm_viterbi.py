@@ -14,6 +14,7 @@ import pandas as pd
 
 # display_conf_matrix() takes the confusion matrix and produces a visual of it
 def display_conf_matrix(conf, labels):
+  # Set font values for the confusion matrix image
     font = {'family' : 'DejaVu Sans',
     'weight' : 'bold',
     'size'   : 10}
@@ -22,7 +23,9 @@ def display_conf_matrix(conf, labels):
     fig, ax = plt.subplots(figsize=(30,30))
     ax.set_xticklabels(labels,fontsize=9)
     ax.set_yticklabels(labels,fontsize=9)
+    # values_format='' is used to avoid showing in precision format eg 4200 shoudn't be shown as 4.2e3 (just to make the confusion matrix look better) 
     cm_obj.plot(ax=ax,values_format='')
+    # set the axis labels and title
     cm_obj.ax_.set(
             title="Confusion Matrix",
             xlabel="Predicted",
@@ -41,10 +44,13 @@ def per_POS_evaluation(conf_matrix,uniq_tag):
     li=[]
     for i in range(len(conf_matrix)):
         rt,ct=0,0
+        # rt= no. of actual tags for tag i
+        # rt= no. of predicted(obtained) tags for tag i
         for j in range(len(conf_matrix)):
             rt+=conf_matrix[i][j]
             ct+=conf_matrix[j][i]
         A=conf_matrix[i][i]
+        # Calculate scores for each POS tag 
         prec=A/ct
         rec=A/rt
         F1=(2*prec*rec)/(prec+rec)
@@ -206,7 +212,25 @@ for setno in range(5):
     test_words.append(temp_word) # list with words of a sentence(tokenized sentence) appended to a list of list
     test_tags.append(temp_tag) # list with tags of a sentence(tokenized sentence) appended to a list of list
 
-  #Viterbi Algorithm Implementation
+  #VITERBI ALGORITHM IMPLEMENTATION
+# For each word in a sentence
+# – The probability of best candidates for each tag at previous level is
+#   multiplied with the emission probability and the transition
+#   probability of possible tags based on current word
+# – The best candidate for each tag at the current level is chosen and
+#   the previous tag is kept a track of for backtracking
+# – The result of forward propagation at each level looks like the
+#   following
+#   LEVEL_K:{TAG1:{best_candidate_among_Tag1,probability_of the
+#   best candidate} , {TAG2:{previous_tag_of_best_candidate_
+#   among_Tag2, probability_of the best candidate}, ...}
+# – When backtracking start from the end to start choosing the
+#   predicted tag based on LEVEL information and the predicted tag
+#   that follows the word.
+# – In case an unseen word arrives the next tag is set to ‘NOUN’ and
+#   the emission probability is set to a low probability (0.0001). This is
+#   based on the observation from the corpus that ≈ 63% of the
+#   unseen words were noun.
   predicted_tags = []                #Final list for prediction
   for i in range(len(test_words)):   # for each tokenized sentence in the test data (test_words is a list of lists)
     sent = test_words[i]
@@ -250,34 +274,37 @@ for setno in range(5):
               temp.append(storing_values[q-1][pt][1]*0.0001)
           max_temp_index = temp.index(max(temp))
           best_pt = previous_states[max_temp_index]
-          storing_values[q][t]=[best_pt,max(temp)]
-
+          storing_values[q][t]=[best_pt,max(temp)] #Store the best previous tag for each best candidate per tag and the meximum probability
+ 
     #Backtracing to extract the best possible tags for the sentence
-    pred_tags = []
+    # for each word looking the current word and the word and tag next to it in the sentence backtrack
+    # to get the tag of current word
+    pred_tags = [] #predicted tags by viterbi using backtracking
     total_steps_num = storing_values.keys()
-    last_step_num = max(total_steps_num)
-    for bs in range(len(total_steps_num)):
-      step_num = last_step_num - bs
+    last_step_num = max(total_steps_num)     # Begin from the last word which will end the delimiter
+    for bs in range(len(total_steps_num)):    
+      step_num = last_step_num - bs          
       if step_num == last_step_num:
         pred_tags.append('$$')
-        pred_tags.append(storing_values[step_num]['$$'][0])
+        pred_tags.append(storing_values[step_num]['$$'][0]) 
       if step_num<last_step_num and step_num>0:
-        pred_tags.append(storing_values[step_num][pred_tags[len(pred_tags)-1]][0])
+        pred_tags.append(storing_values[step_num][pred_tags[len(pred_tags)-1]][0]) #Looking into storing value fetch the best previous tag for the current word
     predicted_tags.append(list(reversed(pred_tags)))
 
 
+#Now that the tags are predicted, get the actual and predicted tags so that analysis can be done
   tag_seq_act=[]
   tag_seq_pred=[]
   uniq_tag=set()
   uniq_tag_dict={}
   for li in test_tags:
       for tag in li:
-          if(tag!="^^" and tag!="$$"):
+          if(tag!="^^" and tag!="$$"): #Exclude delimiters
             tag_seq_act.append(tag)
 
   for li in predicted_tags:
       for tag in li:
-          if(tag!="^^" and tag!="$$"):
+          if(tag!="^^" and tag!="$$"): #Exclude delimiters
             tag_seq_pred.append(tag)
       
   for tag in tag_seq_act:
@@ -294,33 +321,34 @@ for setno in range(5):
   for i,tag in enumerate(tag_seq_pred):
       tag_seq_pred[i]=uniq_tag_dict[tag]
 
-
+# Calculate the precision, Recall and F-Scores by comparing the actual and predicted tags
   matched_tags=0
   for i in range(len(tag_seq_act)):
       if tag_seq_act[i]==tag_seq_pred[i]:
         matched_tags+=1
+  # Estimations for the current set
   precision=matched_tags/(len(tag_seq_pred))
   recall=matched_tags/(len(tag_seq_act))
   F1_score=(2*precision*recall)/(precision+recall)
   F05_score=(1.25*precision*recall)/(0.25*precision+recall)
   F2_score=(5*precision*recall)/(4*precision+recall)
+  # A confusion matrix is created which is used to diplay the confusion matrix and for per pos evaluation
   conf_matrix=confusion_matrix(tag_seq_act,tag_seq_pred)
   pos_estimation=per_POS_evaluation(conf_matrix, uniq_tag)
 
+  #Store every set's estimations
   precision_sets[setno]=precision
   recall_sets[setno]=recall
   F1_score_sets[setno]=F1_score
   F05_score_sets[setno]=F05_score
   F2_score_sets[setno]=F2_score
   pos_estimation_sets[setno]=pos_estimation
-  # print("\n===================\nSET ",setno+1," ESTIMATIONS\n===================")
-  # print("Precision: ",precision)
-  # print("Recall :",recall)
-  # print("F1 Score :",F1_score)
-  # print("F0.5 Score :",F05_score)
-  # print("F2 Score :",F2_score)
-  # display(pos_estimation)
 
+# After getting every set's estimations combine them
+# For k fold cross validation
+# mean(each of the k set estimations) ± standard_error(each of the k set estimations)
+# standard_error= standard_deviation/square_root(k)
+# example Overall precision=(Σ precision_set i)/5 ± squareroot([Σ(precision_set_i-precision_mean)²]/5) here 5 for 5 fold cross validation
 print("===================\nOVERALL ESTIMATIONS\n===================")
 print("Overall Precision:", "{:.6f}".format(statistics.mean(precision_sets)),"±","{:.6f}".format(statistics.stdev(precision_sets)/math.sqrt(setno+1)))
 print("Overall Recall:" ,"{:.6f}".format(statistics.mean(recall_sets)),"±","{:.6f}".format(statistics.stdev(recall_sets)/math.sqrt(setno+1)))
@@ -332,5 +360,7 @@ se_POS_est=np.sqrt((pos_estimation_sets[0]-mean_POS_est)**2+(pos_estimation_sets
 print("\n===============\nPOS ESTIMATIONS\n===============\n++++\nMEAN\n++++\n",mean_POS_est,"\n++++++++++++++\nSTANDARD ERROR\n++++++++++++++\n",se_POS_est)
 
 print("Following is the confusion matrix of set ",setno+1)
+#Here confusion matrix for the set 5 is shown
 display_conf_matrix(conf_matrix, uniq_tag)
+#Following line is used to show the confusion matrix when the code is run on terminal, can be commented if using jupyter notebooks 
 matplotlib.pyplot.show()
