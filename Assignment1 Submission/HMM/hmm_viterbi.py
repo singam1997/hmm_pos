@@ -65,7 +65,9 @@ def per_POS_evaluation(conf_matrix,uniq_tag):
     return table
 
 # Getting the brown corpus
-nltk.download('all')                                  
+print("Downloading files from NLTK please wait...")
+nltk.download('all', quiet=True)
+print("NLTK files downloaded!")                 
 from nltk.corpus import brown
 
 # Sentences fetched with its word tagged with universal tagset and sentences are
@@ -122,6 +124,7 @@ F1_score_sets=[0]*5
 F05_score_sets=[0]*5
 F2_score_sets=[0]*5
 pos_estimation_sets=[pd.DataFrame]*5
+print("Running Viterbi over all 5 cross validation sets...") #Note this is just for showing progress, viterbi is executed further in the loop
 for setno in range(5):
   # For each set calculate the transmission and emission probabilities on training set
   # And perform viterbi on test set. Later find per POS and overall estimation
@@ -343,6 +346,7 @@ for setno in range(5):
   F05_score_sets[setno]=F05_score
   F2_score_sets[setno]=F2_score
   pos_estimation_sets[setno]=pos_estimation
+  print("Set ",setno+1,"✓")
 
 # After getting every set's estimations combine them
 # For k fold cross validation
@@ -359,7 +363,7 @@ mean_POS_est=(pos_estimation_sets[0]+pos_estimation_sets[1]+pos_estimation_sets[
 se_POS_est=np.sqrt((pos_estimation_sets[0]-mean_POS_est)**2+(pos_estimation_sets[1]-mean_POS_est)**2+(pos_estimation_sets[2]-mean_POS_est)**2+(pos_estimation_sets[3]-mean_POS_est)**2+(pos_estimation_sets[4]-mean_POS_est)**2)/5
 print("\n===============\nPOS ESTIMATIONS\n===============\n++++\nMEAN\n++++\n",mean_POS_est,"\n++++++++++++++\nSTANDARD ERROR\n++++++++++++++\n",se_POS_est)
 
-print("Following is the confusion matrix of set ",setno+1)
+print("\n\nThe confusion matrix of set ",setno+1," will be displayed")
 #Here confusion matrix for the set 5 is shown
 display_conf_matrix(conf_matrix, uniq_tag)
 #Following line is used to show the confusion matrix when the code is run on terminal, can be commented if using jupyter notebooks 
