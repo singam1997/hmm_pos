@@ -19,7 +19,7 @@
 `python3 hmm_viterbi.py`
 3) The Estimations will be shown within the terminal and Confusion Matrix is shown in in a new window
 
-###For Windows
+### For Windows
 
 1) Open Command prompt and go to HMM folder  
 	`cd HMM`
